@@ -21,34 +21,26 @@ typedef struct {
     int word_count_size;
 } ThreadData;
 
-void remove_punctuation(char *word) {
-    int len = strlen(word);
-    int j = 0;
-    for (int i = 0; i < len; i++) {
-        if (isalpha(word[i]) || word[i] == '\'') { 
-            word[j++] = word[i];
-        }
-    }
-    word[j] = '\0';
-}
-
 long find_word_boundary(FILE *file, long pos) {
     fseek(file, pos, SEEK_SET);
     int c;
     while ((c = fgetc(file)) != EOF && !isspace(c)) {
     }
-    return ftell(file); 
+    return ftell(file);
 }
 
 void *count_words_in_segment(void *arg) {
     ThreadData *data = (ThreadData *)arg;
     FILE *file = data->file;
-
     fseek(file, data->start_pos, SEEK_SET);
 
     char word[MAX_WORD_LENGTH];
-    while (ftell(file) < data->end_pos && fscanf(file, "%99s", word) != EOF) {
-        remove_punctuation(word);
+    while (fscanf(file, "%99s", word) != EOF) {
+        
+        if (ftell(file) > data->end_pos) {
+            break;
+        }
+
         for (int i = 0; word[i]; i++) {
             word[i] = tolower(word[i]);
         }
@@ -72,7 +64,6 @@ void *count_words_in_segment(void *arg) {
             data->word_count_size++;
         }
     }
-
     pthread_exit(NULL);
 }
 
@@ -139,7 +130,13 @@ int main(int argc, char *argv[]) {
         long start_pos = current_pos;
         long end_pos = (i + 1) * segment_size + (i + 1 < remaining ? i + 1 : remaining);
 
+       
         end_pos = find_word_boundary(thread_file, end_pos);
+
+        
+        if (end_pos < start_pos) {
+            end_pos = file_size;
+        }
 
         thread_data[i].file = thread_file;
         thread_data[i].start_pos = start_pos;
@@ -158,9 +155,7 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < num_threads; i++) {
         pthread_join(threads[i], NULL);
-
         consolidate_word_counts(global_word_counts, &global_word_count_size, thread_data[i].word_counts, thread_data[i].word_count_size);
-
         fclose(thread_data[i].file);
     }
 
