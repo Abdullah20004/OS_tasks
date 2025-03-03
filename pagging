@@ -1,0 +1,85 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define BITS 8 
+
+typedef struct {
+    int page_number;    
+    unsigned char counter; 
+} PageFrame;
+
+void simulate_aging(int num_frames, const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        perror("Failed to open file");
+        exit(EXIT_FAILURE);
+    }
+
+   
+    PageFrame *frames = (PageFrame *)malloc(num_frames * sizeof(PageFrame));
+    memset(frames, 0, num_frames * sizeof(PageFrame));
+
+    int page_faults = 0; 
+    int total_references = 0; 
+    int page; 
+
+   
+    while (fscanf(file, "%d", &page) == 1) {
+        total_references++;
+        int found = 0;
+
+        
+        for (int i = 0; i < num_frames; i++) {
+            if (frames[i].page_number == page) {
+                found = 1;
+                frames[i].counter |= (1 << (BITS - 1)); 
+                break;
+            }
+        }
+
+        
+        if (!found) {
+            page_faults++;
+            int replace_index = 0;
+            unsigned char min_counter = frames[0].counter;
+
+            
+            for (int i = 1; i < num_frames; i++) {
+                if (frames[i].counter < min_counter) {
+                    min_counter = frames[i].counter;
+                    replace_index = i;
+                }
+            }
+
+            
+            frames[replace_index].page_number = page;
+            frames[replace_index].counter = (1 << (BITS - 1)); 
+        }
+
+        
+        for (int i = 0; i < num_frames; i++) {
+            frames[i].counter >>= 1;
+        }
+    }
+
+    fclose(file);
+    free(frames);
+
+    
+    printf("Total page faults after %d references: %d\n", total_references, page_faults);
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        printf("Usage: %s <num_frames> <input_file>\n", argv[0]);
+        return 1;
+    }
+
+    int num_frames = atoi(argv[1]); 
+    const char *filename = argv[2]; 
+
+    simulate_aging(num_frames, filename);
+
+    return 0;
+}
