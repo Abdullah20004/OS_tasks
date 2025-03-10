@@ -1,0 +1,79 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define N 5          
+#define FRAMES 3      
+#define REFS 20       
+
+void generate_page_reference_string(int *ref_string, int n, double *probabilities) {
+    int current_state = 0;
+    for (int i = 0; i < n; i++) {
+        ref_string[i] = current_state;
+        double r = (double)rand() / RAND_MAX;
+        if (r < probabilities[current_state]) {
+        } else {
+            int new_state;
+            do {
+                new_state = rand() % N;
+            } while (new_state == current_state);
+            current_state = new_state;
+        }
+    }
+}
+
+
+int simulate_page_replacement(int *ref_string, int n, int frames, int local) {
+    int *memory = (int *)malloc(frames * sizeof(int));
+    int page_faults = 0;
+    int next_frame = 0;
+
+    for (int i = 0; i < frames; i++) {
+        memory[i] = -1; 
+    }
+
+    for (int i = 0; i < n; i++) {
+        int page = ref_string[i];
+        int found = 0;
+
+        
+        for (int j = 0; j < frames; j++) {
+            if (memory[j] == page) {
+                found = 1;
+                break;
+            }
+        }
+
+        if (!found) {
+            page_faults++;
+            memory[next_frame] = page;
+            next_frame = (next_frame + 1) % frames;
+        }
+    }
+
+    free(memory);
+    return page_faults;
+}
+
+int main() {
+    srand(time(NULL)); 
+
+    double probabilities[N] = {0.5, 0.3, 0.7, 0.4, 0.6};
+
+    int ref_string[REFS];
+    generate_page_reference_string(ref_string, REFS, probabilities);
+
+    printf("Generated Page Reference String:\n");
+    for (int i = 0; i < REFS; i++) {
+        printf("%d ", ref_string[i]);
+    }
+    printf("\n");
+
+    int local_faults = simulate_page_replacement(ref_string, REFS, FRAMES, 1);
+    printf("Local Page Replacement Faults: %d\n", local_faults);
+
+    int global_faults = simulate_page_replacement(ref_string, REFS, FRAMES, 0);
+    printf("Global Page Replacement Faults: %d\n", global_faults);
+
+    return 0;
+}
