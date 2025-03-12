@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define N 5          
-#define FRAMES 3      
-#define REFS 20       
+#define N 5
+#define FRAMES 3
+#define REFS 20
 
 void generate_page_reference_string(int *ref_string, int n, double *probabilities) {
     int current_state = 0;
@@ -22,21 +22,14 @@ void generate_page_reference_string(int *ref_string, int n, double *probabilitie
     }
 }
 
-
-int simulate_page_replacement(int *ref_string, int n, int frames, int local) {
-    int *memory = (int *)malloc(frames * sizeof(int));
+int simulate_page_replacement(int *ref_string, int n, int *memory, int frames) {
     int page_faults = 0;
     int next_frame = 0;
-
-    for (int i = 0; i < frames; i++) {
-        memory[i] = -1; 
-    }
 
     for (int i = 0; i < n; i++) {
         int page = ref_string[i];
         int found = 0;
 
-        
         for (int j = 0; j < frames; j++) {
             if (memory[j] == page) {
                 found = 1;
@@ -51,29 +44,60 @@ int simulate_page_replacement(int *ref_string, int n, int frames, int local) {
         }
     }
 
-    free(memory);
     return page_faults;
 }
 
 int main() {
-    srand(time(NULL)); 
+    srand(time(NULL));
 
     double probabilities[N] = {0.5, 0.3, 0.7, 0.4, 0.6};
 
-    int ref_string[REFS];
-    generate_page_reference_string(ref_string, REFS, probabilities);
+    int ref_string_process1[REFS];
+    int ref_string_process2[REFS];
+    generate_page_reference_string(ref_string_process1, REFS, probabilities);
+    generate_page_reference_string(ref_string_process2, REFS, probabilities);
 
-    printf("Generated Page Reference String:\n");
+    printf("Page Reference String for Process 1:\n");
     for (int i = 0; i < REFS; i++) {
-        printf("%d ", ref_string[i]);
+        printf("%d ", ref_string_process1[i]);
     }
     printf("\n");
 
-    int local_faults = simulate_page_replacement(ref_string, REFS, FRAMES, 1);
-    printf("Local Page Replacement Faults: %d\n", local_faults);
+    printf("Page Reference String for Process 2:\n");
+    for (int i = 0; i < REFS; i++) {
+        printf("%d ", ref_string_process2[i]);
+    }
+    printf("\n");
 
-    int global_faults = simulate_page_replacement(ref_string, REFS, FRAMES, 0);
-    printf("Global Page Replacement Faults: %d\n", global_faults);
+    int memory_local_process1[FRAMES];
+    int memory_local_process2[FRAMES];
+    for (int i = 0; i < FRAMES; i++) {
+        memory_local_process1[i] = -1;
+        memory_local_process2[i] = -1;
+    }
+
+    int local_faults_process1 = simulate_page_replacement(ref_string_process1, REFS, memory_local_process1, FRAMES);
+    int local_faults_process2 = simulate_page_replacement(ref_string_process2, REFS, memory_local_process2, FRAMES);
+    int total_local_faults = local_faults_process1 + local_faults_process2;
+
+    printf("Local Page Replacement Faults:\n");
+    printf("  Process 1: %d\n", local_faults_process1);
+    printf("  Process 2: %d\n", local_faults_process2);
+    printf("  Total: %d\n", total_local_faults);
+
+    int memory_global[FRAMES];
+    for (int i = 0; i < FRAMES; i++) {
+        memory_global[i] = -1;
+    }
+
+    int global_faults_process1 = simulate_page_replacement(ref_string_process1, REFS, memory_global, FRAMES);
+    int global_faults_process2 = simulate_page_replacement(ref_string_process2, REFS, memory_global, FRAMES);
+    int total_global_faults = global_faults_process1 + global_faults_process2;
+
+    printf("Global Page Replacement Faults:\n");
+    printf("  Process 1: %d\n", global_faults_process1);
+    printf("  Process 2: %d\n", global_faults_process2);
+    printf("  Total: %d\n", total_global_faults);
 
     return 0;
 }
