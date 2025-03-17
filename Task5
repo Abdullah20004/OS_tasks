@@ -1,0 +1,87 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <limits.h>
+#include <errno.h>
+
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
+#define MAX_BINS 1000
+
+
+void traverse_directory(const char *dirpath, long *bins, long bin_width, int *max_bin_index) {
+    DIR *dir;
+    struct dirent *entry;
+    struct stat statbuf;
+
+    if ((dir = opendir(dirpath)) == NULL) {
+        perror("opendir");
+        return;
+    }
+
+    while ((entry = readdir(dir)) != NULL) {
+        char path[PATH_MAX];
+        snprintf(path, sizeof(path), "%s/%s", dirpath, entry->d_name);
+
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        if (lstat(path, &statbuf) != 0) {
+            if (errno != ENOENT) {
+                perror("lstat");
+            }
+            continue;
+        }
+
+        if (S_ISDIR(statbuf.st_mode)) {
+            traverse_directory(path, bins, bin_width, max_bin_index);
+        } else if (S_ISREG(statbuf.st_mode)) {
+            long bin_index = statbuf.st_size / bin_width;
+            if (bin_index >= MAX_BINS) {
+                bin_index = MAX_BINS - 1;
+            }
+            bins[bin_index]++;
+            if (bin_index > *max_bin_index) {
+                *max_bin_index = bin_index;
+            }
+        }
+    }
+
+    closedir(dir);
+}
+
+void print_histogram(const long *bins, long bin_width, int max_bin_index) {
+    printf("Histogram of file sizes (bin width: %ld):\n", bin_width);
+    for (int i = 0; i <= max_bin_index; i++) {
+        printf("%ld - %ld: %ld\n", i * bin_width, (i + 1) * bin_width - 1, bins[i]);
+    }
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <directory> <bin_width>\n", argv[0]);
+        return 1;
+    }
+
+    const char *dirpath = argv[1];
+    long bin_width = atol(argv[2]);
+
+    if (bin_width <= 0) {
+        fprintf(stderr, "Bin width must be a positive integer.\n");
+        return 1;
+    }
+
+    long bins[MAX_BINS] = {0}; 
+    int max_bin_index = 0;
+
+    traverse_directory(dirpath, bins, bin_width, &max_bin_index);
+    print_histogram(bins, bin_width, max_bin_index);
+
+    return 0;
+}
