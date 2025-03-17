@@ -1,0 +1,42 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <dirent.h>
+#include <errno.h>
+#include <string.h>
+
+void list_files(const char *dirpath) {
+    DIR *dir;
+    struct dirent *entry;
+
+    dir = opendir(dirpath);
+    if (dir == NULL) {
+        fprintf(stderr, "Error: Cannot open directory '%s': %s\n", dirpath, strerror(errno));
+        return;
+    }
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        printf("%s\n", entry->d_name);
+    }
+
+    closedir(dir);
+}
+
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <directory1> [<directory2> ...]\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+
+    for (int i = 1; i < argc; i++) {
+        printf("Files in '%s':\n", argv[i]);
+        list_files(argv[i]);
+        printf("\n"); 
+    }
+
+    return 0;
+}
